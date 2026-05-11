@@ -1,0 +1,35 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tgz
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Runtime artifacts (only present after running on a gateway)
+lads-pki/
+
+# Local env
+.env
+.env.local
+
+# Internal-only — never publish (lab-specific flows + reference material)
+examples/
+lads-context/
+Analytika-Flow-example.json

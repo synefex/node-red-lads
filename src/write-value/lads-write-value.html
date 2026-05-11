@@ -1,0 +1,135 @@
+<script type="text/javascript">
+  RED.nodes.registerType("lads-write-value", {
+    // See lads-read-value.html for why this is a space, not '-'.
+    category: "Synefex LADS",
+    color: "#A6BBCF",
+    defaults: {
+      name: { value: "" },
+      connection: { value: "", type: "lads-connection", required: true },
+      nodeId: { value: "" },
+      nodeIdType: { value: "str" },
+      ladsPath: { value: "" },
+      value: { value: "payload" },
+      valueType: { value: "msg" },
+      dataType: { value: "Double" },
+      includeMeta: { value: false }
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "font-awesome/fa-pencil",
+    paletteLabel: "LADS write",
+    label: function () {
+      if (this.name) return this.name;
+      if (this.nodeIdType === "str" && this.nodeId) return "write " + this.nodeId;
+      return "LADS write";
+    },
+    oneditprepare: function () {
+      $("#node-input-nodeId").typedInput({
+        default: this.nodeIdType || "str",
+        typeField: $("#node-input-nodeIdType"),
+        types: ["str", "msg", "flow", "global", "env"]
+      });
+      $("#node-input-value").typedInput({
+        default: this.valueType || "msg",
+        typeField: $("#node-input-valueType"),
+        types: ["msg", "flow", "global", "str", "num", "bool", "json"]
+      });
+
+      // Picker: cascade through Device/FU/Function and pick a writable
+      // variable. The picker also auto-fills the DataType dropdown from the
+      // chosen variable's metadata.
+      if (window.LadsPicker) {
+        window.LadsPicker.attach({
+          kind: "writable",
+          connectionFieldId: "node-input-connection",
+          nodeIdFieldId: "node-input-nodeId",
+          pathFieldId: "node-input-ladsPath",
+          dataTypeFieldId: "node-input-dataType",
+        });
+      }
+    },
+    oneditsave: function () {
+      this.ladsPath = $("#node-input-ladsPath").val() || "";
+    }
+  });
+</script>
+
+<script type="text/html" data-template-name="lads-write-value">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name">
+  </div>
+  <div class="form-row">
+    <label for="node-input-connection"><i class="fa fa-server"></i> Connection</label>
+    <input type="text" id="node-input-connection">
+  </div>
+  <div class="form-row">
+    <label for="node-input-nodeId"><i class="fa fa-hashtag"></i> NodeId</label>
+    <input type="text" id="node-input-nodeId" placeholder="ns=6;i=6141">
+    <input type="hidden" id="node-input-nodeIdType">
+    <input type="hidden" id="node-input-ladsPath">
+  </div>
+  <div class="form-row">
+    <label for="node-input-value"><i class="fa fa-pencil"></i> Value</label>
+    <input type="text" id="node-input-value">
+    <input type="hidden" id="node-input-valueType">
+  </div>
+  <div class="form-row">
+    <label for="node-input-dataType"><i class="fa fa-th"></i> Data type</label>
+    <select id="node-input-dataType" style="width:200px">
+      <option value="Double">Double (float64)</option>
+      <option value="Float">Float (float32)</option>
+      <option value="Int16">Int16</option>
+      <option value="Int32">Int32</option>
+      <option value="Int64">Int64</option>
+      <option value="UInt16">UInt16</option>
+      <option value="UInt32">UInt32</option>
+      <option value="UInt64">UInt64</option>
+      <option value="Boolean">Boolean</option>
+      <option value="Byte">Byte</option>
+      <option value="SByte">SByte</option>
+      <option value="String">String</option>
+      <option value="LocalizedText">LocalizedText</option>
+      <option value="QualifiedName">QualifiedName</option>
+    </select>
+  </div>
+  <div class="form-row">
+    <label for="node-input-includeMeta" style="width:auto">
+      <input type="checkbox" id="node-input-includeMeta" style="display:inline-block; width:auto; vertical-align:middle">
+      Attach OPC UA metadata as <code>msg.lads</code>
+    </label>
+  </div>
+</script>
+
+<script type="text/html" data-help-name="lads-write-value">
+  <p>Writes a value to the <code>Value</code> attribute of a single OPC UA
+  node.</p>
+
+  <h3>Configuration</h3>
+  <dl class="message-properties">
+    <dt>NodeId <span class="property-type">string</span></dt>
+    <dd>The variable to write.</dd>
+    <dt>Value <span class="property-type">any</span></dt>
+    <dd>What to write. Sourced from the message, flow/global context, or a
+    literal of any of the typed-input flavors.</dd>
+    <dt>Data type <span class="property-type">string</span></dt>
+    <dd>OPC UA data type to encode the value as. The dropdown lists the common
+    LADS types. Override at runtime by setting <code>msg.dataType</code> to
+    one of the same names.</dd>
+  </dl>
+
+  <h3>Convenience coercions</h3>
+  <p>For <code>LocalizedText</code> a plain string is wrapped to
+  <code>{ text: "...", locale: "" }</code>. For <code>QualifiedName</code>
+  a plain string is wrapped to
+  <code>{ name: "...", namespaceIndex: 0 }</code>. All other types are
+  passed through to <code>node-opcua</code> as-is.</p>
+
+  <h3>Output</h3>
+  <p>On success, the trigger message is forwarded unchanged. With
+  <i>Attach OPC UA metadata</i> enabled, <code>msg.lads</code> is set to
+  <code>{ nodeId, dataType, writtenValue, statusCode }</code>.</p>
+
+  <h3>Errors</h3>
+  <p>Bad <code>StatusCode</code> or a write exception → <code>done(err)</code>.</p>
+</script>

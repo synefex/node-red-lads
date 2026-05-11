@@ -1,0 +1,150 @@
+<script type="text/javascript">
+  RED.nodes.registerType("lads-operate", {
+    // See lads-read-value.html for why this is a space, not '-'.
+    category: "Synefex LADS",
+    color: "#A6BBCF",
+    defaults: {
+      name: { value: "" },
+      connection: { value: "", type: "lads-connection", required: true },
+      fu: { value: "" },
+      fuType: { value: "str" },
+      ladsPath: { value: "" },
+      operation: { value: "Start" },
+      operationType: { value: "str" },
+      inputArgs: { value: "[]" },
+      inputArgsType: { value: "json" },
+      outputProperty: { value: "payload" },
+      outputPropertyType: { value: "msg" },
+      includeMeta: { value: false }
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "font-awesome/fa-play-circle",
+    paletteLabel: "LADS operate",
+    label: function () {
+      if (this.name) return this.name;
+      if (this.operationType === "str" && this.operation) return "operate " + this.operation;
+      return "LADS operate";
+    },
+    oneditprepare: function () {
+      $("#node-input-fu").typedInput({
+        default: this.fuType || "str",
+        typeField: $("#node-input-fuType"),
+        types: ["str", "msg", "flow", "global", "env"]
+      });
+      $("#node-input-operation").typedInput({
+        default: this.operationType || "str",
+        typeField: $("#node-input-operationType"),
+        types: [
+          {
+            value: "str",
+            label: "static",
+            options: ["Start", "Stop", "Abort", "Hold", "Resume", "Reset", "StartProgram", "ClearAll", "Suspend"]
+          },
+          "msg", "flow", "global"
+        ]
+      });
+      $("#node-input-inputArgs").typedInput({
+        default: this.inputArgsType || "json",
+        typeField: $("#node-input-inputArgsType"),
+        types: ["json", "msg", "flow", "global"]
+      });
+      $("#node-input-outputProperty").typedInput({
+        default: this.outputPropertyType || "msg",
+        typeField: $("#node-input-outputPropertyType"),
+        types: ["msg", "flow", "global"]
+      });
+
+      // Picker: cascade Device → FU → Function. The chosen FU or Function is
+      // written into the FU NodeId field as the operation target. The
+      // operation name itself stays a separate typed-input (Start, Stop, ...).
+      if (window.LadsPicker) {
+        window.LadsPicker.attach({
+          kind: "target",
+          connectionFieldId: "node-input-connection",
+          nodeIdFieldId: "node-input-fu",
+          pathFieldId: "node-input-ladsPath",
+        });
+      }
+    },
+    oneditsave: function () {
+      this.ladsPath = $("#node-input-ladsPath").val() || "";
+    }
+  });
+</script>
+
+<script type="text/html" data-template-name="lads-operate">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name">
+  </div>
+  <div class="form-row">
+    <label for="node-input-connection"><i class="fa fa-server"></i> Connection</label>
+    <input type="text" id="node-input-connection">
+  </div>
+  <div class="form-row">
+    <label for="node-input-fu"><i class="fa fa-cube"></i> FU NodeId</label>
+    <input type="text" id="node-input-fu" placeholder="ns=6;i=5050">
+    <input type="hidden" id="node-input-fuType">
+    <input type="hidden" id="node-input-ladsPath">
+  </div>
+  <div class="form-row">
+    <label for="node-input-operation"><i class="fa fa-play-circle"></i> Operation</label>
+    <input type="text" id="node-input-operation">
+    <input type="hidden" id="node-input-operationType">
+  </div>
+  <div class="form-row">
+    <label for="node-input-inputArgs"><i class="fa fa-list"></i> Input args</label>
+    <input type="text" id="node-input-inputArgs">
+    <input type="hidden" id="node-input-inputArgsType">
+  </div>
+  <div class="form-row">
+    <label for="node-input-outputProperty"><i class="fa fa-arrow-right"></i> Output to</label>
+    <input type="text" id="node-input-outputProperty">
+    <input type="hidden" id="node-input-outputPropertyType">
+  </div>
+  <div class="form-row">
+    <label for="node-input-includeMeta" style="width:auto">
+      <input type="checkbox" id="node-input-includeMeta" style="display:inline-block; width:auto; vertical-align:middle">
+      Attach OPC UA metadata as <code>msg.lads</code>
+    </label>
+  </div>
+</script>
+
+<script type="text/html" data-help-name="lads-operate">
+  <p>Drives the LADS <code>FunctionalUnitState</code> machine on a target
+  FunctionalUnit. The node browses the FU once to find its state machine
+  child and the named method, caches the result, then calls the method.</p>
+
+  <h3>Configuration</h3>
+  <dl class="message-properties">
+    <dt>FU NodeId <span class="property-type">string</span></dt>
+    <dd>The FunctionalUnit object (e.g. <code>ns=6;i=5050</code>). The node
+    finds the <code>FunctionalUnitState</code> child automatically — do not
+    pass the state machine NodeId directly.</dd>
+    <dt>Operation <span class="property-type">string</span></dt>
+    <dd>Name of the state machine method to invoke. Standard LADS:
+    <code>Start</code>, <code>Stop</code>, <code>Abort</code>,
+    <code>Hold</code>, <code>Resume</code>, <code>Reset</code>,
+    <code>StartProgram</code>, <code>ClearAll</code>, <code>Suspend</code>.
+    Vendor extensions are accepted — anything that exists on the FU's state
+    machine. The dropdown is suggestion-only.</dd>
+    <dt>Input args <span class="property-type">array</span></dt>
+    <dd>Array of <code>{ "dataType", "value" }</code>. Most state ops are
+    void, so leave at <code>[]</code>. <code>StartProgram</code> takes
+    program-template + properties (see LADS spec).</dd>
+  </dl>
+
+  <h3>Output</h3>
+  <p>Same shape as <code>lads-call-method</code>: void ops chain the trigger
+  message through; ops with outputs surface them on the configured property.
+  Metadata (when enabled) includes the resolved <code>stateMachineId</code>
+  and <code>methodId</code> alongside <code>statusCode</code> and
+  <code>outputArguments</code>.</p>
+
+  <h3>Errors</h3>
+  <p>If the FU has no <code>FunctionalUnitState</code> child, or the
+  requested operation does not exist on it, the node throws with the list of
+  available method names. Bad <code>StatusCode</code> from the call →
+  <code>done(err)</code>.</p>
+</script>

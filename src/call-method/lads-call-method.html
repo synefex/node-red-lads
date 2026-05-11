@@ -1,0 +1,151 @@
+<script type="text/javascript">
+  RED.nodes.registerType("lads-call-method", {
+    // See lads-read-value.html for why this is a space, not '-'.
+    category: "Synefex LADS",
+    color: "#A6BBCF",
+    defaults: {
+      name: { value: "" },
+      connection: { value: "", type: "lads-connection", required: true },
+      objectId: { value: "" },
+      objectIdType: { value: "str" },
+      methodId: { value: "" },
+      methodIdType: { value: "str" },
+      ladsPath: { value: "" },
+      inputArgs: { value: "[]" },
+      inputArgsType: { value: "json" },
+      outputProperty: { value: "payload" },
+      outputPropertyType: { value: "msg" },
+      includeMeta: { value: false }
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "font-awesome/fa-bolt",
+    paletteLabel: "LADS call",
+    label: function () {
+      if (this.name) return this.name;
+      if (this.methodIdType === "str" && this.methodId) return "call " + this.methodId;
+      return "LADS call";
+    },
+    oneditprepare: function () {
+      $("#node-input-objectId").typedInput({
+        default: this.objectIdType || "str",
+        typeField: $("#node-input-objectIdType"),
+        types: ["str", "msg", "flow", "global", "env"]
+      });
+      $("#node-input-methodId").typedInput({
+        default: this.methodIdType || "str",
+        typeField: $("#node-input-methodIdType"),
+        types: ["str", "msg", "flow", "global", "env"]
+      });
+      $("#node-input-inputArgs").typedInput({
+        default: this.inputArgsType || "json",
+        typeField: $("#node-input-inputArgsType"),
+        types: ["json", "msg", "flow", "global"]
+      });
+      $("#node-input-outputProperty").typedInput({
+        default: this.outputPropertyType || "msg",
+        typeField: $("#node-input-outputPropertyType"),
+        types: ["msg", "flow", "global"]
+      });
+
+      // Picker: cascade through Device/FU/Function/Method. The leaf picks a
+      // method and writes BOTH its NodeId (to methodId) and its owner (state
+      // machine or direct parent) to objectId.
+      if (window.LadsPicker) {
+        window.LadsPicker.attach({
+          kind: "method",
+          connectionFieldId: "node-input-connection",
+          nodeIdFieldId: "node-input-methodId",
+          pathFieldId: "node-input-ladsPath",
+          objectFieldId: "node-input-objectId",
+        });
+      }
+    },
+    oneditsave: function () {
+      this.ladsPath = $("#node-input-ladsPath").val() || "";
+    }
+  });
+</script>
+
+<script type="text/html" data-template-name="lads-call-method">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name">
+  </div>
+  <div class="form-row">
+    <label for="node-input-connection"><i class="fa fa-server"></i> Connection</label>
+    <input type="text" id="node-input-connection">
+  </div>
+  <div class="form-row">
+    <label for="node-input-objectId"><i class="fa fa-cube"></i> Object NodeId</label>
+    <input type="text" id="node-input-objectId" placeholder="ns=6;i=5016">
+    <input type="hidden" id="node-input-objectIdType">
+  </div>
+  <div class="form-row">
+    <label for="node-input-methodId"><i class="fa fa-bolt"></i> Method NodeId</label>
+    <input type="text" id="node-input-methodId" placeholder="ns=6;i=7005">
+    <input type="hidden" id="node-input-methodIdType">
+    <input type="hidden" id="node-input-ladsPath">
+  </div>
+  <div class="form-row">
+    <label for="node-input-inputArgs"><i class="fa fa-list"></i> Input args</label>
+    <input type="text" id="node-input-inputArgs">
+    <input type="hidden" id="node-input-inputArgsType">
+  </div>
+  <div class="form-row">
+    <label for="node-input-outputProperty"><i class="fa fa-arrow-right"></i> Output to</label>
+    <input type="text" id="node-input-outputProperty">
+    <input type="hidden" id="node-input-outputPropertyType">
+  </div>
+  <div class="form-row">
+    <label for="node-input-includeMeta" style="width:auto">
+      <input type="checkbox" id="node-input-includeMeta" style="display:inline-block; width:auto; vertical-align:middle">
+      Attach OPC UA metadata as <code>msg.lads</code>
+    </label>
+  </div>
+</script>
+
+<script type="text/html" data-help-name="lads-call-method">
+  <p>Calls an OPC UA method on a target object. Wraps
+  <code>session.call</code>.</p>
+
+  <h3>Configuration</h3>
+  <dl class="message-properties">
+    <dt>Object NodeId <span class="property-type">string</span></dt>
+    <dd>The parent object that hosts the method (typically the
+    <code>HasComponent</code> source).</dd>
+    <dt>Method NodeId <span class="property-type">string</span></dt>
+    <dd>The method node itself.</dd>
+    <dt>Input args <span class="property-type">array</span></dt>
+    <dd>Array of <code>{ "dataType": "<i>name</i>", "value": ... }</code>
+    entries, one per declared input argument. <code>dataType</code> is a
+    string like <code>"UInt32"</code>, <code>"Double"</code>,
+    <code>"String"</code>, <code>"Boolean"</code>, <code>"Int16"</code>, ...
+    (or the numeric OPC UA DataType). Use <code>[]</code> for methods with
+    no inputs.</dd>
+  </dl>
+
+  <h3>Output</h3>
+  <dl class="message-properties">
+    <dt>payload <span class="property-type">any</span></dt>
+    <dd>For methods with a single output: the unwrapped value. For
+    multiple outputs: an array of unwrapped values, in declaration order.
+    For <b>void</b> methods (Zero, Stop, Abort, ...) the output property is
+    left untouched so the trigger message chains through unchanged.
+    <code>LocalizedText</code> / <code>QualifiedName</code> are unwrapped
+    the same way as in <code>lads-read-value</code>.</dd>
+    <dt class="optional">lads <span class="property-type">object</span></dt>
+    <dd>When metadata is enabled: <code>statusCode</code>,
+    <code>inputArgumentResults</code> (per-arg status), full
+    <code>outputArguments</code> with each one's <code>dataType</code> and
+    <code>rawValue</code>.</dd>
+  </dl>
+
+  <h3>Errors</h3>
+  <p>Non-good <code>StatusCode</code> or a call exception → <code>done(err)</code>.</p>
+
+  <h3>Example: balance Zero</h3>
+  <pre>Object NodeId : ns=6;i=5016   (WeighingSensor.Operational)
+Method NodeId : ns=6;i=7005   (Zero)
+Input args    : []</pre>
+</script>

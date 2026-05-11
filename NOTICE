@@ -1,0 +1,12 @@
+@synefex/node-red-lads
+Copyright 2026 Wiens Synefex GmbH
+
+This product is licensed under the Apache License, Version 2.0.
+You may obtain a copy of the License in the accompanying LICENSE file
+or at http://www.apache.org/licenses/LICENSE-2.0.
+
+---
+
+Runtime dependencies (`node-opcua` and its transitive dependencies) are
+pulled in by `npm install` and carry their own licenses; see the LICENSE
+files distributed under `node_modules/`.

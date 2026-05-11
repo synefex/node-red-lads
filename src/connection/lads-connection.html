@@ -1,0 +1,146 @@
+<!-- Browser-side LADS picker widget. Served as a static asset by the
+     connection node's admin route; loaded here once so it's available on
+     window.LadsPicker for every action node's editor dialog. -->
+<script type="text/javascript" src="lads/picker.js"></script>
+
+<script type="text/javascript">
+  RED.nodes.registerType("lads-connection", {
+    category: "config",
+    defaults: {
+      name: { value: "" },
+      endpoint: { value: "opc.tcp://127.0.0.1:4840", required: true },
+      securityMode: { value: "None" },
+      securityPolicy: { value: "None" },
+      authMode: { value: "anonymous" },
+      applicationName: { value: "synefex-lads-nodered" },
+      applicationUri: { value: "urn:synefex:nodered:lads-client" },
+      sessionTimeout: { value: 60000, validate: RED.validators.number() },
+      acceptServerCertificate: { value: true }
+    },
+    credentials: {
+      username: { type: "text" },
+      password: { type: "password" }
+    },
+    label: function () {
+      return this.name || this.endpoint || "LADS connection";
+    },
+    oneditprepare: function () {
+      const $auth = $("#node-config-input-authMode");
+      const $rows = $(".lads-auth-userpass");
+      function syncAuth() {
+        if ($auth.val() === "username") $rows.show();
+        else $rows.hide();
+      }
+      $auth.on("change", syncAuth);
+      syncAuth();
+
+      const $secMode = $("#node-config-input-securityMode");
+      const $secPolicy = $("#node-config-input-securityPolicy");
+      function syncSecurity() {
+        if ($secMode.val() === "None") {
+          $secPolicy.val("None").prop("disabled", true);
+        } else {
+          $secPolicy.prop("disabled", false);
+          if ($secPolicy.val() === "None") $secPolicy.val("Basic256Sha256");
+        }
+      }
+      $secMode.on("change", syncSecurity);
+      syncSecurity();
+    }
+  });
+</script>
+
+<script type="text/html" data-template-name="lads-connection">
+  <div class="form-row">
+    <label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-config-input-name" placeholder="e.g. Julabo MD on bench">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-endpoint"><i class="fa fa-globe"></i> Endpoint</label>
+    <input type="text" id="node-config-input-endpoint" placeholder="opc.tcp://host:port">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-securityMode"><i class="fa fa-shield"></i> Security mode</label>
+    <select id="node-config-input-securityMode">
+      <option value="None">None</option>
+      <option value="Sign">Sign</option>
+      <option value="SignAndEncrypt">Sign &amp; Encrypt</option>
+    </select>
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-securityPolicy"><i class="fa fa-lock"></i> Security policy</label>
+    <select id="node-config-input-securityPolicy">
+      <option value="None">None</option>
+      <option value="Basic256Sha256">Basic256Sha256</option>
+      <option value="Aes128_Sha256_RsaOaep">Aes128_Sha256_RsaOaep</option>
+      <option value="Aes256_Sha256_RsaPss">Aes256_Sha256_RsaPss</option>
+    </select>
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-authMode"><i class="fa fa-user"></i> Authentication</label>
+    <select id="node-config-input-authMode">
+      <option value="anonymous">Anonymous</option>
+      <option value="username">Username &amp; password</option>
+    </select>
+  </div>
+  <div class="form-row lads-auth-userpass">
+    <label for="node-config-input-username">Username</label>
+    <input type="text" id="node-config-input-username">
+  </div>
+  <div class="form-row lads-auth-userpass">
+    <label for="node-config-input-password">Password</label>
+    <input type="password" id="node-config-input-password">
+  </div>
+  <hr>
+  <div class="form-row">
+    <label for="node-config-input-applicationName">Application name</label>
+    <input type="text" id="node-config-input-applicationName">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-applicationUri">Application URI</label>
+    <input type="text" id="node-config-input-applicationUri">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-sessionTimeout">Session timeout (ms)</label>
+    <input type="number" id="node-config-input-sessionTimeout">
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-acceptServerCertificate" style="width:auto">
+      <input type="checkbox" id="node-config-input-acceptServerCertificate" style="display:inline-block; width:auto; vertical-align:middle">
+      Auto-trust server certificate (lab/testing only)
+    </label>
+  </div>
+</script>
+
+<script type="text/html" data-help-name="lads-connection">
+  <p>OPC UA connection to a LADS-conformant device. One config node per
+  endpoint; it owns a long-lived client + session shared by every
+  <code>lads-*</code> action node that references it.</p>
+
+  <h3>Security</h3>
+  <p>For lab devices on a trusted network, <b>None / None / Anonymous</b> is
+  usually enough. Switch to <b>Sign</b> or <b>Sign &amp; Encrypt</b> with a
+  matching policy when the server requires it.</p>
+  <p>The first time a secured connection is attempted, a self-signed client
+  certificate is generated under
+  <code>&lt;userDir&gt;/lads-pki/own/certs/</code> — the server administrator
+  may need to add it to the server's trust list before the connection
+  succeeds.</p>
+
+  <h3>Authentication</h3>
+  <ul>
+    <li><b>Anonymous</b> — no credentials.</li>
+    <li><b>Username &amp; password</b> — plain credentials are sent over
+    the secured channel. Avoid this combination with security mode
+    <b>None</b> on untrusted networks.</li>
+  </ul>
+
+  <h3>Reconnect</h3>
+  <p>The underlying OPC UA client auto-reconnects on transient drops; action
+  nodes block on the next reconnect. Connection state is broadcast to all
+  action nodes that subscribe (visible as their canvas status indicator).</p>
+
+  <h3>Auto-trust server certificate</h3>
+  <p>When enabled, the client accepts any server certificate without manual
+  trust list management. Convenient for lab benches, unsafe for production.</p>
+</script>

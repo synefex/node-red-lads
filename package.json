@@ -1,0 +1,59 @@
+{
+  "name": "@synefex/node-red-lads",
+  "version": "0.1.0",
+  "description": "Node-RED nodes for LADS lab devices. Persistent OPC UA session, browse-based picker, full action set (read, write, call method, drive state machine).",
+  "license": "Apache-2.0",
+  "author": "Maximilian Wiens <maximilian.wiens@synefex.de> (Wiens Synefex GmbH)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/synefex/node-red-lads.git"
+  },
+  "homepage": "https://github.com/synefex/node-red-lads#readme",
+  "bugs": {
+    "url": "https://github.com/synefex/node-red-lads/issues"
+  },
+  "node-red": {
+    "version": ">=3.1.0",
+    "nodes": {
+      "lads-connection": "src/connection/lads-connection.js",
+      "lads-read-value": "src/read-value/lads-read-value.js",
+      "lads-write-value": "src/write-value/lads-write-value.js",
+      "lads-call-method": "src/call-method/lads-call-method.js",
+      "lads-operate": "src/operate/lads-operate.js"
+    }
+  },
+  "dependencies": {
+    "node-opcua": "^2.130.0"
+  },
+  "overrides": {
+    "hexy": "0.3.5"
+  },
+  "devDependencies": {
+    "node-red": "^4.0.0",
+    "node-red-node-test-helper": "^0.3.4",
+    "mocha": "^10.7.0"
+  },
+  "scripts": {
+    "test": "mocha \"test/**/*.test.js\" --timeout 10000"
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "node-red",
+    "node-red-contrib",
+    "opcua",
+    "opc-ua",
+    "lads",
+    "lab-automation",
+    "laboratory",
+    "synefex"
+  ]
+}
