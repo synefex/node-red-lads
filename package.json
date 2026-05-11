@@ -1,6 +1,6 @@
 {
   "name": "@synefex/node-red-lads",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Node-RED nodes for LADS lab devices. Persistent OPC UA session, browse-based picker, full action set (read, write, call method, drive state machine).",
   "license": "Apache-2.0",
   "author": "Maximilian Wiens <maximilian.wiens@synefex.de> (Wiens Synefex GmbH)",
